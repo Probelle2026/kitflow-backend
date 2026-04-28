@@ -3,7 +3,6 @@ const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const { PrismaClient } = require('@prisma/client');
-
 const authMiddleware = require('./middleware/auth');
 const influencersRouter = require('./routes/influencers');
 const analyticsRouter = require('./routes/analytics');
@@ -11,6 +10,7 @@ const messagesRouter = require('./routes/messages');
 const { startJobs } = require('./jobs/tracking');
 
 const app = express();
+app.set('trust proxy', 1);
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 
