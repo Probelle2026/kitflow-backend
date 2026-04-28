@@ -1,0 +1,5 @@
+[phases.build]
+cmds = ["npm ci", "npx prisma generate"]
+
+[start]
+cmd = "npx prisma db push && node src/server.js"

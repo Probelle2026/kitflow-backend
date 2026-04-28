@@ -14,53 +14,30 @@ const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 
-// CORS
-app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
-  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','x-api-secret'],
-}));
-
+app.use(cors({ origin: '*', methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','x-api-secret'] }));
 app.use(express.json({ limit: '10mb' }));
+app.use(rateLimit({ windowMs: 15*60*1000, max: 200 }));
 
-// Rate limiting
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
-app.use(limiter);
-
-// Health check (no auth required)
-app.get('/health', async (req, res) => {
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    res.json({ ok: true, message: 'KitFlow backend online', timestamp: new Date() });
-  } catch (e) {
-    res.status(503).json({ ok: false, error: e.message });
-  }
+app.get('/health', (req, res) => {
+  res.json({ ok: true, message: 'KitFlow online', timestamp: new Date() });
 });
 
-// Auth on all /api routes
 app.use('/api', authMiddleware);
-
-// Routes
 app.use('/api/influencers', influencersRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/messages', messagesRouter);
 
-// 404
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
+app.use((err, req, res, next) => res.status(500).json({ error: err.message }));
 
-// Error handler
-app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ error: err.message });
-});
-
-app.listen(PORT, async () => {
-  console.log(`🚀 KitFlow backend rodando na porta ${PORT}`);
-  
-  // Start cron jobs
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`KitFlow rodando na porta ${PORT}`);
   if (process.env.NODE_ENV !== 'test') {
-    startJobs();
+    try { startJobs(); } catch(e) { console.error('Jobs:', e.message); }
   }
 });
+
+process.on('unhandledRejection', (r) => console.error('Rejection:', r));
+process.on('uncaughtException', (e) => console.error('Exception:', e.message));
 
 module.exports = app;
